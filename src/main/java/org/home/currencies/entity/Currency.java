@@ -18,13 +18,13 @@ import java.util.Set;
 @Setter
 public class Currency extends CommonColumns {
 
-    @Column(nullable = false, comment = "Currency name")
+    @Column(nullable = false, columnDefinition = "TEXT", comment = "Currency name")
     private String currency_name;
 
-    @Column(nullable = false, unique = true, comment = "Currency ISO 4217 alphabetic code")
+    @Column(nullable = false, length = 3, unique = true, comment = "Currency ISO 4217 alphabetic code")
     private String currency_code;
 
-    @Column(nullable = false, unique = true, comment = "Currency ISO 4217 numeric code")
+    @Column(nullable = false, length = 3, unique = true, comment = "Currency ISO 4217 numeric code")
     private String currency_num_code;
 
     @Column(nullable = false, comment = "Currency decimal precision - number of digits after the decimal separator")
@@ -33,7 +33,7 @@ public class Currency extends CommonColumns {
     @Column(nullable = false, comment = "Currency subunit - smallest unit of currency")
     private int subunit;
 
-    @Column(nullable = false, comment = "Currency symbol")
+    @Column(nullable = false, columnDefinition = "TEXT", comment = "Currency symbol")
     private String symbol;
 
     @Column(nullable = false, comment = "Currency symbol position - True if symbol comes before the amount")
