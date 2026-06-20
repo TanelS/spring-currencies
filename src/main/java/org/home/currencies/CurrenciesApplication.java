@@ -16,6 +16,22 @@ import java.io.File;
 public class CurrenciesApplication {
 
     public static void main(String[] args) {
+        loadEnvFile();
+        SpringApplication.run(CurrenciesApplication.class, args);
+    }
+
+
+    /**
+     * Loads environment variables from a `.env` file located in the project's root directory.
+     * The method identifies the root directory by using the `findProjectRoot` method.
+     * It configures and uses the Dotenv library to read the `.env` file and set the values
+     * as system properties. If the `.env` file is missing or malformed, the method continues
+     * without throwing an exception.
+     *
+     * The detected root directory is determined by searching for the directory containing
+     * a "build.gradle" file, starting from the application's home directory.
+     */
+    private static void loadEnvFile() {
         File projectRoot = findProjectRoot(new ApplicationHome(CurrenciesApplication.class).getDir());
 
         Dotenv dotenv = Dotenv.configure()
@@ -28,8 +44,6 @@ public class CurrenciesApplication {
         for (DotenvEntry entry : dotenv.entries()) {
             System.setProperty(entry.getKey(), entry.getValue());
         }
-
-        SpringApplication.run(CurrenciesApplication.class, args);
     }
 
     /**
