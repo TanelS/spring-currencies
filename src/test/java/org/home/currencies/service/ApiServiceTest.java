@@ -2,12 +2,18 @@ package org.home.currencies.service;
 
 import org.home.currencies.CurrenciesApplication;
 import org.home.currencies.dto.CurrenciesApiResponse;
+import org.home.currencies.dto.CurrencyInfo;
+import org.home.currencies.dto.RatesApiResponse;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 public class ApiServiceTest {
@@ -31,6 +37,22 @@ public class ApiServiceTest {
     void currencyFetch() {
         CurrenciesApiResponse currResponse = service.getCurrencies();
         assertNotNull(currResponse);
+        assertFalse(currResponse.response().isEmpty());
+        Set<String> shorCodes = currResponse.response()
+                .stream()
+                .map(CurrencyInfo::short_code)
+                .collect(Collectors.toSet());
+        assertTrue(shorCodes.contains("EUR"));
+    }
+
+
+    @Test
+    void currencyRatesFetch() {
+        RatesApiResponse ratesResponse = service.getRates("USD", List.of("EUR", "GBP"));
+        assertNotNull(ratesResponse);
+        assertFalse(ratesResponse.response().rates().isEmpty());
+        assertTrue(ratesResponse.response().rates().keySet().containsAll(List.of("EUR", "GBP")));
+        assertEquals("USD", ratesResponse.response().base());
     }
 
 }
