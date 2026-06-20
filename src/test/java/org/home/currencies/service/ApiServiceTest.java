@@ -45,7 +45,6 @@ public class ApiServiceTest {
         assertTrue(shorCodes.contains("EUR"));
     }
 
-
     @Test
     void currencyRatesFetch() {
         RatesApiResponse ratesResponse = service.getRates("USD", List.of("EUR", "GBP"));
