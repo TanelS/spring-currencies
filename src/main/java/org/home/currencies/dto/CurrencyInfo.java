@@ -15,7 +15,7 @@ public record CurrencyInfo(
         int subunit,
         String symbol,
         boolean symbol_first,
-        String decimal_mark,
-        String thousands_separator
+        Character decimal_mark,
+        Character thousands_separator
 
 ) {}
