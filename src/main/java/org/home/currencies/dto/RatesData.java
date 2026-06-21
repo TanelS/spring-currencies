@@ -1,5 +1,6 @@
 package org.home.currencies.dto;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.HashMap;
 
@@ -13,6 +14,6 @@ import java.util.HashMap;
 public record RatesData(
         Instant date,
         String base,
-        HashMap<String, Double> rates
+        HashMap<String, BigDecimal> rates
 ) {
 }
