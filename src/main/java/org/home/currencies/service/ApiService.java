@@ -6,12 +6,19 @@ import org.home.currencies.dto.RatesApiResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.beans.factory.annotation.Value;
+import tools.jackson.databind.JsonNode;
+import org.home.currencies.util.StringCleaner;
+import tools.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 @Service
 public class ApiService {
     private final RestClient restClient;
+    private final ObjectMapper objectMapper;
+    private static final Logger logger = LoggerFactory.getLogger(ApiService.class);
 
     /**
      * Constructs an instance of {@code ApiService} with the provided API root URL and API key.
@@ -20,11 +27,16 @@ public class ApiService {
      * @param apiKey the API key used for authenticating requests to the currency beacon API
      */
     public ApiService(@Value("${currencybeacon.api.root}") String apiUrl,
-                       @Value("${currencybeacon.api.key}") String apiKey) {
+                      @Value("${currencybeacon.api.key}") String apiKey,
+                      ObjectMapper objectMapper) {
+
+
+
         this.restClient = RestClient.builder()
                 .baseUrl(apiUrl)
                 .defaultHeader("Authorization", "Bearer " + apiKey)
                 .build();
+        this.objectMapper = objectMapper;
     }
 
     /**
@@ -33,8 +45,25 @@ public class ApiService {
      * @return an instance of {@link CurrenciesApiResponse} containing the list of available currencies
      *         and their related information.
      */
+//    public CurrenciesApiResponse getCurrencies() {
+//        return this.restClient.get().uri("/currencies").retrieve().body(CurrenciesApiResponse.class);
+//    }
+
     public CurrenciesApiResponse getCurrencies() {
-        return this.restClient.get().uri("/currencies").retrieve().body(CurrenciesApiResponse.class);
+        JsonNode response;
+        try {
+            response = this.restClient.get().uri("/currencies").retrieve().body(JsonNode.class);
+        } catch (Exception e) {
+            logger.error("Failed to fetch currencies", e);
+            return null;
+        }
+
+        if (response == null) {
+            return null;
+        }
+        logger.info("Nothing horrible happened, got some currencies");  //TODO remove later
+        JsonNode cleanedTree = StringCleaner.cleanTree(response);
+        return objectMapper.treeToValue(cleanedTree, CurrenciesApiResponse.class);
     }
 
 
