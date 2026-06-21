@@ -45,10 +45,27 @@ setup that actually exercises that config rather than mocking around it.
 - `ApiService` — typed HTTP client for the CurrencyBeacon API
   (`GET /currencies`, `GET /latest`), with JUnit tests verifying real API
   responses.
+- `StringCleaner` — a generic, vendor-agnostic JSON sanitizer (`JsonNode` in,
+  cleaned `JsonNode` out) that recursively walks any object/array shape and
+  cleans every string leaf it finds, with no references to `Currency`/`Rate`
+  or CurrencyBeacon — reusable for any future external API client, not just
+  this one. Wired into both `ApiService` methods, ahead of converting the raw
+  response into its typed DTO.
+- Error handling and logging in `ApiService`: an empty response body and a
+  malformed (non-JSON) response body are both handled explicitly (returning
+  `null` rather than throwing an unhandled exception), and both failure paths
+  are logged via SLF4J to `logs/app.log`.
 - Local Postgres via Docker Compose, schema auto-created from the entities
   (`spring.jpa.hibernate.ddl-auto=update`).
 
 **Not yet built:**
+- The actual text-cleaning rules inside `StringCleaner` — HTML-unescape,
+  Unicode normalization, stripping control/zero-width characters — are still
+  a placeholder (`cleanString` currently returns its input unchanged). The
+  tree-walking logic around it is complete and verified against live API
+  data; only the leaf-level cleaning itself is pending.
+- Whether/how to apply the same sanitizer to this app's own inbound REST
+  request bodies, not just outbound CurrencyBeacon responses — undecided.
 - Repository layer.
 - Import/deduplication service (loading fetched data into Postgres).
 - Public REST API for querying stored rates (a temporary `/currency-testing/*`
@@ -118,6 +135,17 @@ Initializr scaffold) had no such `@BeforeAll` fix and failed first, which
 poisoned the cache for any other test class sharing the same configuration —
 making a correctly-fixed test appear to still fail. Removing that stub (it
 asserted nothing and tested nothing) resolved it.
+
+**CurrencyBeacon's `/latest` response is more redundant than it looks.** The
+raw JSON contains `date`/`base`/`rates` *twice* — once nested under a
+`response` key, and again flattened at the top level alongside a `meta`
+block. This briefly looked like a bug in `StringCleaner` (string leaves
+appeared to be visited twice), but it's genuine API behavior, confirmed by
+inspecting the raw response directly. It's harmless for the current DTOs —
+`RatesApiResponse`/`RatesData` only map against the nested `response` object,
+so the duplicate top-level copies are simply ignored during conversion — but
+worth knowing about before assuming a tree-walk over this payload is buggy
+just because the same value shows up more than once.
 
 A third gotcha: `src/test/resources/application.properties` doesn't merge
 with `src/main/resources/application.properties` — Gradle's test classpath

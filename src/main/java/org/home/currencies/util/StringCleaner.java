@@ -12,6 +12,14 @@ public class StringCleaner {
         return input;
     }
 
+    /**
+     * Recursively cleans a JSON tree structure by transforming all string values in the
+     * specified {@code JsonNode} using the {@code cleanString} method. The transformation
+     * applies to strings within objects, arrays, or standalone string nodes.
+     *
+     * @param node the root {@code JsonNode} to be cleaned; can be an object, array, or string node
+     * @return the cleaned {@code JsonNode}, with string values replaced by their transformed equivalents
+     */
     public static JsonNode cleanTree(JsonNode node) {
 
         if (node.isObject()) {
