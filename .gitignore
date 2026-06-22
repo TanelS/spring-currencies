@@ -38,3 +38,5 @@ out/
 /postgres_data/
 /.env
 .env
+**/*.log
+**/*.gz
