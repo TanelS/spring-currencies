@@ -13,12 +13,15 @@ public class StringCleaner {
     }
 
     /**
-     * Recursively cleans a JSON tree structure by transforming all string values in the
-     * specified {@code JsonNode} using the {@code cleanString} method. The transformation
-     * applies to strings within objects, arrays, or standalone string nodes.
+     * Recursively cleans string values in a JSON tree structure by applying the cleaning logic
+     * defined in the {@code cleanString} method.
      *
-     * @param node the root {@code JsonNode} to be cleaned; can be an object, array, or string node
-     * @return the cleaned {@code JsonNode}, with string values replaced by their transformed equivalents
+     * If the provided node is an object, it iterates through its properties and cleans any
+     * string values. If the node is an array, it iterates through its elements and cleans
+     * string values. If the node is a string, it applies the cleaning logic directly.
+     *
+     * @param node the root of the JSON tree to be cleaned. It can be an object, array, or a string node.
+     * @return the cleaned JSON tree structure with string values processed.
      */
     public static JsonNode cleanTree(JsonNode node) {
 
