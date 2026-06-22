@@ -35,4 +35,9 @@ public class TestController {
         currencyService.importAllCurrencies();
     }
 
+    @PostMapping("/import-rates")
+    public void getRatesFromApi() {
+        currencyService.createAllRates();
+    }
+
 }
