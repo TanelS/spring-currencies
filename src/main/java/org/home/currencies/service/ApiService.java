@@ -11,7 +11,9 @@ import org.home.currencies.util.StringCleaner;
 import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 
+import java.time.Duration;
 import java.util.List;
 
 @Service
@@ -21,19 +23,23 @@ public class ApiService {
     private static final Logger logger = LoggerFactory.getLogger(ApiService.class);
 
     /**
-     * Constructs an instance of {@code ApiService} with the provided API root URL and API key.
+     * Constructs an instance of {@code ApiService} for interacting with the remote API.
      *
-     * @param apiUrl the root URL of the currency beacon API
-     * @param apiKey the API key used for authenticating requests to the currency beacon API
+     * @param apiUrl       the base URL of the remote API
+     * @param apiKey       the API key required for authentication with the remote API
+     * @param objectMapper the {@link ObjectMapper} used for JSON serialization and deserialization
      */
     public ApiService(@Value("${currencybeacon.api.root}") String apiUrl,
                       @Value("${currencybeacon.api.key}") String apiKey,
                       ObjectMapper objectMapper) {
 
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory();
+        requestFactory.setReadTimeout(Duration.ofSeconds(50));
 
         this.restClient = RestClient.builder()
                 .baseUrl(apiUrl)
                 .defaultHeader("Authorization", "Bearer " + apiKey)
+                .requestFactory(requestFactory)
                 .build();
         this.objectMapper = objectMapper;
     }
