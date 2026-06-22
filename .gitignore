@@ -39,3 +39,4 @@ out/
 /.env
 .env
 **/*.log
+**/*.gz

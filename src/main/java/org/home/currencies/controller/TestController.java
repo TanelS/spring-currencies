@@ -3,10 +3,8 @@ package org.home.currencies.controller;
 import org.home.currencies.dto.CurrenciesApiResponse;
 import org.home.currencies.dto.RatesApiResponse;
 import org.home.currencies.service.ApiService;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.home.currencies.service.CurrencyService;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -15,9 +13,11 @@ import java.util.List;
 @RequestMapping("/currency-testing")
 public class TestController {
     private final ApiService service;
+    private final CurrencyService currencyService;
 
-    public TestController(ApiService service) {
+    public TestController(ApiService service, CurrencyService currencyService) {
         this.service = service;
+        this.currencyService = currencyService;
     }
 
     @GetMapping("/currencies")
@@ -30,5 +30,9 @@ public class TestController {
         return service.getRates(baseCurrency, symbols);
     }
 
+    @PostMapping("/import-currencies")
+    public void getCurrenciesFromApi() {
+        currencyService.importAllCurrencies();
+    }
 
 }
