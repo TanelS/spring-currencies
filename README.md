@@ -48,15 +48,23 @@ This README and the Javadoc comments throughout the codebase are AI-generated (C
 
 1. Copy `.env.example` to `.env` and fill in real values — Postgres credentials and a CurrencyBeacon API key (`CURRENCYBEACON_API_KEY`, `CURRENCYBEACON_API_ROOT`). Get a free key by signing up at [currencybeacon.com](https://currencybeacon.com/) (their free tier is enough to run this project).
 2. Start Postgres: `docker compose up -d`
-3. Run the app: `./gradlew bootRun`
+3. Run the app:
+   - **Windows:** `.\gradlew bootRun`
+   - **Mac/Linux:** `./gradlew bootRun`
 
 The app loads `.env` itself (independent of working directory) and creates the schema automatically on first run.
 
+## Development
+
+To verify the code compiles without starting the app:
+
+- **Windows:** `.\gradlew compileJava`
+- **Mac/Linux:** `./gradlew compileJava`
+
 ## Running tests
 
-```
-./gradlew test
-```
+- **Windows:** `.\gradlew test`
+- **Mac/Linux:** `./gradlew test`
 
 Tests run against an in-memory H2 database and still load `.env` for the CurrencyBeacon credentials, since `ApiServiceTest` calls the real API.
 
