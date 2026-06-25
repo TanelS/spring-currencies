@@ -32,7 +32,7 @@ This README and the Javadoc comments throughout the codebase are AI-generated (C
 **Done:**
 - `Currency` / `Rate` JPA entities, with the dual foreign-key relationship on `Rate` (target currency + base currency, both pointing at `Currency`) and a composite unique constraint on `(currency_id, base_currency_id, rate_date)`.
 - `ApiService` — typed HTTP client for the CurrencyBeacon API (`GET /currencies`, `GET /latest`), with JUnit tests verifying real API responses.
-- `StringCleaner` — a generic, vendor-agnostic JSON sanitizer (`JsonNode` in, cleaned `JsonNode` out) that recursively walks any object/array shape and cleans every string leaf it finds, with no references to `Currency`/`Rate` or CurrencyBeacon — reusable for any future external API client, not just this one. Wired into both `ApiService` methods, ahead of converting the raw response into its typed DTO.
+- `StringCleaner` — a generic, vendor-agnostic JSON sanitizer (`JsonNode` in, cleaned `JsonNode` out) that recursively walks any object/array shape and cleans every string leaf it finds, with no references to `Currency`/`Rate` or CurrencyBeacon — reusable for any future external API client, not just this one. Wired into both `ApiService` methods, ahead of converting the raw response into its typed DTO. String cleaning rules: HTML-unescape, NFKC Unicode normalization, stripping control characters, carriage returns, zero-width characters, collapsing whitespace runs to a single space, and trimming. Covered by a dedicated unit test suite (`StringCleanerTest`) — no Spring context needed, plain JUnit against the static method.
 - Error handling and logging in `ApiService`: an empty response body and a malformed (non-JSON) response body are both handled explicitly (returning `null` rather than throwing an unhandled exception), and both failure paths are logged via SLF4J to `logs/app.log`.
 - Local Postgres via Docker Compose, schema auto-created from the entities (`spring.jpa.hibernate.ddl-auto=update`).
 - `CurrencyRepository` (plain `JpaRepository<Currency, Long>`, plus a `findByCurrencyCode` lookup) and `CurrencyService` — fetches all currencies from `ApiService`, maps each one onto a `Currency` entity, skips any whose code already exists (idempotent re-runs), and persists the rest. Verified against the live API: 161 currencies imported on first run, 0 imported/161 skipped on a second run. A failure on one currency is logged and skipped rather than aborting the whole import.
@@ -40,7 +40,6 @@ This README and the Javadoc comments throughout the codebase are AI-generated (C
 - A read timeout (50s) on `ApiService`'s `RestClient`, so a hung or rate-limited CurrencyBeacon call fails fast and gets logged, instead of blocking indefinitely with no error at all.
 
 **Not yet built:**
-- The actual text-cleaning rules inside `StringCleaner` — HTML-unescape, Unicode normalization, stripping control/zero-width characters — are still a placeholder (`cleanString` currently returns its input unchanged). The tree-walking logic around it is complete and verified against live API data; only the leaf-level cleaning itself is pending.
 - Whether/how to apply the same sanitizer to this app's own inbound REST request bodies, not just outbound CurrencyBeacon responses — undecided.
 - Public REST API for querying stored rates (a temporary `/currency-testing/*` controller exists only for manually exercising `ApiService`/`CurrencyService` during development).
 
@@ -66,7 +65,7 @@ To verify the code compiles without starting the app:
 - **Windows:** `.\gradlew test`
 - **Mac/Linux:** `./gradlew test`
 
-Tests run against an in-memory H2 database and still load `.env` for the CurrencyBeacon credentials, since `ApiServiceTest` calls the real API.
+Most tests run against an in-memory H2 database. `ApiServiceTest` calls the real CurrencyBeacon API and loads `.env` for credentials. `StringCleanerTest` needs neither — it tests a pure static method with no Spring context or database.
 
 ## Design notes
 
