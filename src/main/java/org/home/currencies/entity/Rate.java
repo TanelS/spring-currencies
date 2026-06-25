@@ -9,18 +9,22 @@ import java.time.Instant;
 
 @Entity
 @Table(name = "rate", indexes = {
-        @Index(name = "idx_rate_rate", columnList = "rate"),
         @Index(name = "idx_rate_ratedate", columnList = "rateDate"),
-        @Index(name = "idx_rate_createdate", columnList = "createDate"),
-        @Index(name = "idx_rate_modifieddate", columnList = "modifiedDate")
+        @Index(name = "idx_rate_currency_id", columnList = "currency_id"),
+        @Index(name = "idx_rate_base_currency_id", columnList = "base_currency_id")
 }, uniqueConstraints = {
-        @UniqueConstraint(name = "uc_rate_currency_id", columnNames = {"currency_id", "base_currency_id", "rateDate"})
+        @UniqueConstraint(name = "uc_rate_currency_id",
+                columnNames = {
+                        "currency_id",
+                        "base_currency_id",
+                        "rateDate"
+                })
 })
 @Getter
 @Setter
 public class Rate extends CommonColumns {
 
-    @Column(nullable = false,  precision = 20, scale = 10, comment = "Currency rate agains base currency")
+    @Column(nullable = false, precision = 20, scale = 10, comment = "Currency rate agains base currency")
     private BigDecimal rate;
 
     @Column(nullable = false, comment = "Currency rate date agains base currency")
