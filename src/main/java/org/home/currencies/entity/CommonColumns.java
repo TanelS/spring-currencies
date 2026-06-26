@@ -18,7 +18,7 @@ public abstract class CommonColumns {
     private Instant createDate;
 
     @UpdateTimestamp
-    @Column(comment = "Date updated")
+    @Column(comment = "Date updated", nullable = true, insertable = false)
     private Instant modifiedDate;
 
     public Long getId() {
