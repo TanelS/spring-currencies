@@ -1,11 +1,16 @@
 package org.home.currencies.service;
 
+import jakarta.persistence.EntityManagerFactory;
+import org.hibernate.SessionFactory;
+import org.hibernate.StatelessSession;
+import org.hibernate.Transaction;
 import org.home.currencies.entity.Currency;
 import org.home.currencies.entity.Rate;
 import org.home.currencies.repository.CurrencyRepository;
 import org.home.currencies.repository.RateRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -13,66 +18,74 @@ import java.util.HashMap;
 
 @Service
 public class RateService {
+    private static final Logger logger = LoggerFactory.getLogger(RateService.class);
     private final CurrencyRepository currencyRepository;
     private final RateRepository rateRepository;
+    private final SessionFactory sessionFactory;
 
     public record RateImportResult(int imported, int skipped) {
     }
 
-    public RateService(CurrencyRepository currencyRepository, RateRepository rateRepository) {
+    public RateService(
+            CurrencyRepository currencyRepository,
+            RateRepository rateRepository,
+            EntityManagerFactory entityManagerFactory) {
         this.currencyRepository = currencyRepository;
         this.rateRepository = rateRepository;
+        this.sessionFactory = entityManagerFactory.unwrap(SessionFactory.class);
     }
 
     /**
-     * Creates and stores exchange rates for a given base currency and rate date.
-     * Rates are imported from the provided data map. If a rate already exists
-     * for a specific currency on the specified date, it is skipped.
+     * Creates and imports exchange rates for a given date, base currency, and a map of target currencies with their rates.
+     * If a rate already exists for the given combination of date, base currency, and target currency, it is skipped.
      *
      * @param rateDate        The date for which the rates are being created.
-     * @param baseCurrencyStr The ISO 4217 code of the base currency.
-     * @param ratesData       A map containing currency codes as keys and their exchange rates as values.
-     *                        Rates with a null value will be skipped.
-     * @return A {@code RateImportResult} record containing the counts of imported and skipped rates.
+     * @param baseCurrencyStr The currency code of the base currency (e.g., "USD").
+     * @param ratesData       A map where the key is the target currency code (e.g., "EUR") and the value is the exchange rate.
+     * @return A {@code RateImportResult} containing the count of successfully imported rates and skipped rates.
      */
-    @Transactional
-    public RateImportResult createRate(Instant rateDate, String
-            baseCurrencyStr, HashMap<String, BigDecimal> ratesData) {
+    public RateImportResult createRate(Instant rateDate, String baseCurrencyStr, HashMap<String, BigDecimal> ratesData) {
         Currency baseCurrencyEntity = currencyRepository.findByCurrencyCode(baseCurrencyStr).orElseThrow();
         int importedCount = 0;
         int skippedCount = 0;
 
+        try (StatelessSession session = sessionFactory.openStatelessSession()) {
+            Transaction tx = session.beginTransaction();
 
-        for (var entry : ratesData.entrySet()) {
-            String currencyCode = entry.getKey();
-            BigDecimal rate = entry.getValue();
+            for (var entry : ratesData.entrySet()) {
+                String currencyCode = entry.getKey();
+                BigDecimal rate = entry.getValue();
 
-            if (rate == null) {
-                skippedCount++;
-                continue;
+                if (rate == null) {
+                    skippedCount++;
+                    continue;
+                }
+
+                Currency currencyEntity = currencyRepository.findByCurrencyCode(currencyCode).orElseThrow();
+
+                if (rateRepository.findByRateDateAndCurrencyAndBaseCurrency(
+                        rateDate,
+                        currencyEntity,
+                        baseCurrencyEntity).isPresent()) {
+                    skippedCount++;
+                    continue;
+                }
+
+                Rate newRate = new Rate();
+                newRate.setCurrency(currencyEntity);
+                newRate.setRateDate(rateDate);
+                newRate.setBaseCurrency(baseCurrencyEntity);
+                newRate.setRate(rate);
+
+                session.insert(newRate);
+                importedCount++;
             }
 
-            Currency currencyEntity = currencyRepository.findByCurrencyCode(currencyCode).orElseThrow();
-
-            if (rateRepository.findByRateDateAndCurrencyAndBaseCurrency(
-                    rateDate,
-                    currencyEntity,
-                    baseCurrencyEntity).isPresent()) {
-                skippedCount++;
-                continue;
-            }
-
-            Rate newRate = new Rate();
-            newRate.setCurrency(currencyEntity);
-            newRate.setRateDate(rateDate);
-            newRate.setBaseCurrency(baseCurrencyEntity);
-            newRate.setRate(rate);
-
-            rateRepository.save(newRate);
-            importedCount++;
+            tx.commit();
+        } catch (Exception e) {
+            logger.error("Error inserting rates for base currency {}", baseCurrencyStr, e);
         }
+
         return new RateImportResult(importedCount, skippedCount);
     }
-
 }
-

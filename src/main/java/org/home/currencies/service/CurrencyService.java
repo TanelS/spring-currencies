@@ -135,7 +135,7 @@ public class CurrencyService {
         Set<String> codes = currencyRepository.findAll().stream()
                 .map(Currency::getCurrencyCode)
                 .collect(Collectors.toSet());
-
+        logger.info("Starting to import rates for {} currencies", codes.size());
         int importedCount = 0;
         int failedCount = 0;
         int skippedCount = 0;
@@ -164,7 +164,6 @@ public class CurrencyService {
                     logger.error("Base currency {} does not have rates", baseCurr);
                     continue;
                 }
-                logger.info("Working on base {} currency rates", baseCurr);
                 RateService.RateImportResult rateImportResult = rateService.createRate(rateDate, baseCurr, rates);
                 importedCount += rateImportResult.imported();
                 skippedCount += rateImportResult.skipped();
