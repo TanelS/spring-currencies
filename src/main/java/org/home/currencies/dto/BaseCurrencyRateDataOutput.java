@@ -6,7 +6,7 @@ import java.util.HashMap;
 
 public record BaseCurrencyRateDataOutput(
         String baseCurrency,
-        Instant timestamp,
+        Instant rateDate,
         HashMap<String, BigDecimal> rates
 ) {
 }
