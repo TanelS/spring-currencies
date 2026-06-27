@@ -4,17 +4,24 @@ import jakarta.persistence.EntityManagerFactory;
 import org.hibernate.SessionFactory;
 import org.hibernate.StatelessSession;
 import org.hibernate.Transaction;
+import org.home.currencies.dto.BaseCurrencyRateDataOutput;
 import org.home.currencies.entity.Currency;
 import org.home.currencies.entity.Rate;
 import org.home.currencies.repository.CurrencyRepository;
+import org.home.currencies.repository.RateQueryResult;
 import org.home.currencies.repository.RateRepository;
+import org.home.currencies.util.StringCleaner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 @Service
 public class RateService {
@@ -88,4 +95,37 @@ public class RateService {
 
         return new RateImportResult(importedCount, skippedCount);
     }
+
+    public BaseCurrencyRateDataOutput getRatesforCurrencies(
+            String baseCurrency,
+            LocalDate rateDate,
+            List<String> targetCurrency) {
+
+        String baseCurrCleaned = StringCleaner.cleanString(baseCurrency).toUpperCase();
+
+        Set<String> codes = currencyRepository.getAllCurrencyCodes();
+        codes.removeAll(Set.of(baseCurrCleaned));  // but if user wants to see the rate of currency vs base cuttency? which is 1.0 ..
+        List<String> targetList = (targetCurrency == null || targetCurrency.isEmpty()) ? List.copyOf(codes) : targetCurrency;
+
+        targetList = targetList.stream()
+                .map(StringCleaner::cleanString)
+                .filter(Objects::nonNull)
+                .map(String::toUpperCase)
+                .toList();
+
+        List<RateQueryResult> queryResult = rateRepository.findRates(baseCurrCleaned, targetList, rateDate);
+
+        String base = queryResult.getFirst().getBaseCurrencyCode();
+        Instant date = queryResult.getFirst().getRateDate();
+
+        HashMap<String, BigDecimal> rates = new HashMap<>();
+
+        for (RateQueryResult r : queryResult) {
+            String currCode = r.getCurrencyCode();
+            BigDecimal currRate = r.getRate();
+            rates.put(currCode, currRate);
+        }
+        return new BaseCurrencyRateDataOutput(base, date, rates);
+    }
+
 }
