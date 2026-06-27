@@ -1,6 +1,5 @@
 package org.home.currencies.controller;
 
-import jakarta.validation.Valid;
 import org.home.currencies.dto.BaseCurrencyRateDataOutput;
 import org.home.currencies.service.CurrencyService;
 import org.home.currencies.service.RateService;
@@ -10,7 +9,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 

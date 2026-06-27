@@ -32,6 +32,18 @@ public class CurrencyService {
         this.rateService = rateService;
     }
 
+    /**
+     * Retrieves a set of all unique currency codes available in the system.
+     *
+     * @return a set of strings representing currency codes.
+     */
+    public Set<String> getAllCurrencyCodes() {
+        Set<String> codes = currencyRepository.findAll().stream()
+                .map(Currency::getCurrencyCode)
+                .collect(Collectors.toSet());
+        return codes;
+    }
+
 
     /**
      * Creates and persists a new currency in the database if it does not already exist.
@@ -132,9 +144,7 @@ public class CurrencyService {
 //    @Transactional  // this causes transaction issues
     public void createAllRates() {
 
-        Set<String> codes = currencyRepository.findAll().stream()
-                .map(Currency::getCurrencyCode)
-                .collect(Collectors.toSet());
+        Set<String> codes = getAllCurrencyCodes();
         logger.info("Starting to import rates for {} currencies", codes.size());
         int importedCount = 0;
         int failedCount = 0;
@@ -175,5 +185,6 @@ public class CurrencyService {
         }
         logger.info("Imported: {} rates, skipped:{}, failed: {}", importedCount, skippedCount, failedCount);
     }
+
 
 }
