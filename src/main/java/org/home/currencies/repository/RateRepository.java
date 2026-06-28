@@ -33,7 +33,7 @@ public interface RateRepository extends JpaRepository<Rate, Long> {
               AND c2.currency_code IN (:targetCurrencies)
               AND (r.rate_date AT TIME ZONE :localTimezone)::date = :rateDate :: date
             ORDER BY c2.currency_code,
-                     (r.rate_date AT TIME ZONE 'Europe/Tallinn') DESC;
+                     (r.rate_date AT TIME ZONE :localTimezone) DESC;
             """, nativeQuery = true)
     List<RateQueryResult> findRates(
             @Param("baseCurrency") String baseCurrency,

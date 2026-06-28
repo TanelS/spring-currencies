@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
@@ -109,7 +110,7 @@ public class RateService {
         boolean rateDataExists = false;
 
         String baseCurrCleaned = StringCleaner.cleanString(baseCurrency).toUpperCase();
-
+        HashMap<String, BigDecimal> rates = new HashMap<>();
         Set<String> codes = currencyRepository.getAllCurrencyCodes();
         List<LocalDate> rateDates = rateRepository.findDates(localTimezone);
         if (rateDate != null) {
@@ -132,10 +133,19 @@ public class RateService {
 
         List<RateQueryResult> queryResult = rateRepository.findRates(baseCurrCleaned, targetList, rateDate, localTimezone);
 
+        Instant localDateNow = LocalDate.now().atStartOfDay(ZoneId.of(localTimezone)).toInstant(); //TODO delete later if not used
+
+        if (queryResult.isEmpty() && (targetCurrency != null) && targetCurrency.contains(baseCurrency)) {
+            rates.put(baseCurrency, new BigDecimal("1.00"));
+            return new BaseCurrencyRateDataOutput(baseCurrency, Instant.now(), rates);
+        } else if (queryResult.isEmpty()) {
+            return new BaseCurrencyRateDataOutput(baseCurrency, Instant.now(), rates);
+        }
+
         String base = queryResult.getFirst().getBaseCurrencyCode();
         Instant date = queryResult.getFirst().getRateDate();
 
-        HashMap<String, BigDecimal> rates = new HashMap<>();
+
 
         for (RateQueryResult r : queryResult) {
             String currCode = r.getCurrencyCode();
