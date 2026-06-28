@@ -5,6 +5,7 @@ import org.hibernate.SessionFactory;
 import org.hibernate.StatelessSession;
 import org.hibernate.Transaction;
 import org.home.currencies.dto.BaseCurrencyRateDataOutput;
+import org.home.currencies.dto.BaseCurrencyRateDataOutputList;
 import org.home.currencies.entity.Currency;
 import org.home.currencies.entity.Rate;
 import org.home.currencies.repository.CurrencyRepository;
@@ -20,10 +21,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 @Service
 public class RateService {
@@ -102,27 +100,39 @@ public class RateService {
     }
 
 
-    public BaseCurrencyRateDataOutput getRatesforCurrencies(
+    /**
+     * Retrieves exchange rates for the provided base currency and a list of target currencies
+     * for a specific date or a range of available dates.
+     *
+     * @param baseCurrency the base currency code for which to retrieve exchange rates.
+     *                     It should be a non-null string and will be normalized to uppercase.
+     * @param rateDate     an optional date for which the exchange rates are required.
+     *                     If null or if the date is not available, rates for all available dates are considered.
+     * @param targetCurrency a list of target currency codes for which exchange rates are to be fetched.
+     *                       If null or empty, rates for all available currencies (excluding the base currency) are returned.
+     * @return a {@code BaseCurrencyRateDataOutputList} object containing the exchange rate data for the requested
+     *         base currency, target currencies, and the applicable date(s). If no rates are found, the list
+     *         may be empty or contain default data.
+     */
+    public BaseCurrencyRateDataOutputList getRatesforCurrencies(
             String baseCurrency,
             LocalDate rateDate,
             List<String> targetCurrency) {
 
-        boolean rateDataExists = false;
+        boolean rateDateExists = false;
 
         String baseCurrCleaned = StringCleaner.cleanString(baseCurrency).toUpperCase();
-        HashMap<String, BigDecimal> rates = new HashMap<>();
+        List<BaseCurrencyRateDataOutput> ratesResultList = new ArrayList<>();
+
+
         Set<String> codes = currencyRepository.getAllCurrencyCodes();
         List<LocalDate> rateDates = rateRepository.findDates(localTimezone);
         if (rateDate != null) {
-            rateDataExists = rateDates.contains(rateDate);
-        } else {
-            return null;
+            rateDateExists = rateDates.contains(rateDate);
         }
-        // TODO whole rate dates logic needs a review - the user dows not know what dates are in the db
-        System.out.println("rateDataExists: " + rateDataExists);  // TODO delete later
+        System.out.println("rateDateExists: " + rateDateExists);  // TODO delete later
 
-
-        codes.removeAll(Set.of(baseCurrCleaned));  // but if user wants to see the rate of currency vs base cuttency? which is 1.0 ..
+        codes.removeAll(Set.of(baseCurrCleaned)); // remove the base currency from the target currencies
         List<String> targetList = (targetCurrency == null || targetCurrency.isEmpty()) ? List.copyOf(codes) : targetCurrency;
 
         targetList = targetList.stream()
@@ -131,28 +141,34 @@ public class RateService {
                 .map(String::toUpperCase)
                 .toList();
 
-        List<RateQueryResult> queryResult = rateRepository.findRates(baseCurrCleaned, targetList, rateDate, localTimezone);
+        List<LocalDate> rateDatesToLoop = (rateDates.contains(rateDate)) ? List.of(rateDate) : rateDates;
 
-        Instant localDateNow = LocalDate.now().atStartOfDay(ZoneId.of(localTimezone)).toInstant(); //TODO delete later if not used
+        for (LocalDate d : rateDatesToLoop) {
+            HashMap<String, BigDecimal> rates = new HashMap<>();
+            List<RateQueryResult> queryResult = rateRepository.findRates(baseCurrCleaned, targetList, d, localTimezone);
 
-        if (queryResult.isEmpty() && (targetCurrency != null) && targetCurrency.contains(baseCurrency)) {
-            rates.put(baseCurrency, new BigDecimal("1.00"));
-            return new BaseCurrencyRateDataOutput(baseCurrency, Instant.now(), rates);
-        } else if (queryResult.isEmpty()) {
-            return new BaseCurrencyRateDataOutput(baseCurrency, Instant.now(), rates);
+            Instant localDateNow = LocalDate.now().atStartOfDay(ZoneId.of(localTimezone)).toInstant(); //TODO delete later if not used
+
+            if (queryResult.isEmpty() && (targetCurrency != null) && targetCurrency.contains(baseCurrency)) {
+                rates.put(baseCurrency, new BigDecimal("1.00"));
+                ratesResultList.add(new BaseCurrencyRateDataOutput(baseCurrency, Instant.now(), rates));
+                return new BaseCurrencyRateDataOutputList(ratesResultList);
+            } else if (queryResult.isEmpty()) {
+                ratesResultList.add(new BaseCurrencyRateDataOutput(baseCurrency, Instant.now(), rates));
+                continue;
+            }
+
+            String base = queryResult.getFirst().getBaseCurrencyCode();
+            Instant date = queryResult.getFirst().getRateDate();
+
+            for (RateQueryResult r : queryResult) {
+                String currCode = r.getCurrencyCode();
+                BigDecimal currRate = r.getRate();
+                rates.put(currCode, currRate);
+            }
+            ratesResultList.add(new BaseCurrencyRateDataOutput(base, date, rates));
         }
-
-        String base = queryResult.getFirst().getBaseCurrencyCode();
-        Instant date = queryResult.getFirst().getRateDate();
-
-
-
-        for (RateQueryResult r : queryResult) {
-            String currCode = r.getCurrencyCode();
-            BigDecimal currRate = r.getRate();
-            rates.put(currCode, currRate);
-        }
-        return new BaseCurrencyRateDataOutput(base, date, rates);
+        return new BaseCurrencyRateDataOutputList(ratesResultList);
     }
 
 }
