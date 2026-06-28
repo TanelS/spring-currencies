@@ -13,6 +13,7 @@ import org.home.currencies.repository.RateRepository;
 import org.home.currencies.util.StringCleaner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -29,6 +30,9 @@ public class RateService {
     private final CurrencyRepository currencyRepository;
     private final RateRepository rateRepository;
     private final SessionFactory sessionFactory;
+
+    @Value("${local.timezone}")
+    private String localTimezone;
 
     public record RateImportResult(int imported, int skipped) {
     }
@@ -96,14 +100,27 @@ public class RateService {
         return new RateImportResult(importedCount, skippedCount);
     }
 
+
     public BaseCurrencyRateDataOutput getRatesforCurrencies(
             String baseCurrency,
             LocalDate rateDate,
             List<String> targetCurrency) {
 
+        boolean rateDataExists = false;
+
         String baseCurrCleaned = StringCleaner.cleanString(baseCurrency).toUpperCase();
 
         Set<String> codes = currencyRepository.getAllCurrencyCodes();
+        List<LocalDate> rateDates = rateRepository.findDates(localTimezone);
+        if (rateDate != null) {
+            rateDataExists = rateDates.contains(rateDate);
+        } else {
+            return null;
+        }
+        // TODO whole rate dates logic needs a review - the user dows not know what dates are in the db
+        System.out.println("rateDataExists: " + rateDataExists);  // TODO delete later
+
+
         codes.removeAll(Set.of(baseCurrCleaned));  // but if user wants to see the rate of currency vs base cuttency? which is 1.0 ..
         List<String> targetList = (targetCurrency == null || targetCurrency.isEmpty()) ? List.copyOf(codes) : targetCurrency;
 
@@ -113,7 +130,7 @@ public class RateService {
                 .map(String::toUpperCase)
                 .toList();
 
-        List<RateQueryResult> queryResult = rateRepository.findRates(baseCurrCleaned, targetList, rateDate);
+        List<RateQueryResult> queryResult = rateRepository.findRates(baseCurrCleaned, targetList, rateDate, localTimezone);
 
         String base = queryResult.getFirst().getBaseCurrencyCode();
         Instant date = queryResult.getFirst().getRateDate();

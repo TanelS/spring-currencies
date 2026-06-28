@@ -31,15 +31,23 @@ public interface RateRepository extends JpaRepository<Rate, Long> {
                      INNER JOIN currency c2 ON c2.id = r.currency_id
             WHERE c.currency_code = :baseCurrency
               AND c2.currency_code IN (:targetCurrencies)
-              AND (r.rate_date AT TIME ZONE 'Europe/Tallinn')::date = :rateDate :: date
+              AND (r.rate_date AT TIME ZONE :localTimezone)::date = :rateDate :: date
             ORDER BY c2.currency_code,
                      (r.rate_date AT TIME ZONE 'Europe/Tallinn') DESC;
             """, nativeQuery = true)
     List<RateQueryResult> findRates(
             @Param("baseCurrency") String baseCurrency,
             @Param("targetCurrencies") List<String> targetCurrencies,
-            @Param("rateDate") LocalDate rateDate);
+            @Param("rateDate") LocalDate rateDate,
+            @Param("localTimezone") String localTimezone
+    );
 
 
+    @Query(value = """
+                        SELECT DISTINCT ON (r.rate_date::date)
+                (r.rate_date AT TIME ZONE :localTimezone)::date
+            FROM rate r;
+            """, nativeQuery = true)
+    List<LocalDate>findDates(@Param("localTimezone") String localTimezone);
 }
 
