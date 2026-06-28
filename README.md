@@ -41,9 +41,12 @@ One honest exception: the `StatelessSession` approach that resolved the rates im
 - `RateRepository` (a `findByRateDateAndCurrencyAndBaseCurrency` dedup lookup) and `RateService` — given a base currency and its fetched rates, looks up both `Currency` entities by code, skips any rate that's `null` (CurrencyBeacon doesn't always publish a rate for every pair) or already stored for that date, and persists the rest. Uses Hibernate's `StatelessSession` for writes rather than a standard JPA repository — bypassing the first-level cache and dirty-checking overhead that made the full import take ~22 minutes; with `StatelessSession` it runs in ~3m40s (see Design notes). `CurrencyService.createAllRates()` orchestrates the full run: loops over every stored currency as a base currency, fetches its rates, and delegates to `RateService`. Deliberately kept in a *separate* Spring bean from the orchestrating loop — calling a `@Transactional` method on `this` from inside the same class silently skips Spring's transaction proxy, which would otherwise leave the entire ~161-currency run as a single all-or-nothing transaction (see Design notes).
 - A read timeout (50s) on `ApiService`'s `RestClient`, so a hung or rate-limited CurrencyBeacon call fails fast and gets logged, instead of blocking indefinitely with no error at all.
 
+- `GET /rates` endpoint — queries stored rates by base currency, optional target currencies, and optional date (interpreted in `Europe/Tallinn` local time). Returns the latest rate per target currency per day. When no date is supplied, returns rates for all available import dates. When no target currencies are supplied, returns rates for all currencies. A base-currency-against-itself query returns `1.0` without hitting the database. Date interpretation is timezone-aware: the queried date is converted to a UTC range based on the configured local timezone, so users in Estonia get correct results in the 21:00–00:00 UTC window where the UTC date differs from local date.
+
 **Not yet built:**
 - Whether/how to apply the same sanitizer to this app's own inbound REST request bodies, not just outbound CurrencyBeacon responses — undecided.
-- Public REST API for querying stored rates (a temporary `/currency-testing/*` controller exists only for manually exercising `ApiService`/`CurrencyService` during development).
+- `GET /currencies` endpoint for querying stored currency metadata.
+- Exception handlers (`@ControllerAdvice`) for meaningful error responses — currently returns raw 500s for invalid input.
 
 ## Running locally
 
