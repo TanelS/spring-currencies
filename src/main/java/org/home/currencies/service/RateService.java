@@ -20,7 +20,6 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.*;
 
 @Service
@@ -119,18 +118,12 @@ public class RateService {
             LocalDate rateDate,
             List<String> targetCurrency) {
 
-        boolean rateDateExists = false;
-
         String baseCurrCleaned = StringCleaner.cleanString(baseCurrency).toUpperCase();
         List<BaseCurrencyRateDataOutput> ratesResultList = new ArrayList<>();
 
 
         Set<String> codes = currencyRepository.getAllCurrencyCodes();
         List<LocalDate> rateDates = rateRepository.findDates(localTimezone);
-        if (rateDate != null) {
-            rateDateExists = rateDates.contains(rateDate);
-        }
-        System.out.println("rateDateExists: " + rateDateExists);  // TODO delete later
 
         codes.removeAll(Set.of(baseCurrCleaned)); // remove the base currency from the target currencies
         List<String> targetList = (targetCurrency == null || targetCurrency.isEmpty()) ? List.copyOf(codes) : targetCurrency;
@@ -146,8 +139,6 @@ public class RateService {
         for (LocalDate d : rateDatesToLoop) {
             HashMap<String, BigDecimal> rates = new HashMap<>();
             List<RateQueryResult> queryResult = rateRepository.findRates(baseCurrCleaned, targetList, d, localTimezone);
-
-            Instant localDateNow = LocalDate.now().atStartOfDay(ZoneId.of(localTimezone)).toInstant(); //TODO delete later if not used
 
             if (queryResult.isEmpty() && (targetCurrency != null) && targetCurrency.contains(baseCurrency)) {
                 rates.put(baseCurrency, new BigDecimal("1.00"));
