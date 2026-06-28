@@ -1,7 +1,6 @@
 package org.home.currencies.controller;
 
 import org.home.currencies.dto.BaseCurrencyRateDataOutputList;
-import org.home.currencies.service.CurrencyService;
 import org.home.currencies.service.RateService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,7 +14,7 @@ import java.util.List;
 public class RateController {
     private final RateService rateService;
 
-    public RateController(RateService rateService, CurrencyService currencyService) {
+    public RateController(RateService rateService) {
         this.rateService = rateService;
     }
 

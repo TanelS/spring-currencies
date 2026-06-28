@@ -13,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class CurrencyService {
@@ -173,6 +172,22 @@ public class CurrencyService {
         }
         logger.info("Imported: {} rates, skipped:{}, failed: {}", importedCount, skippedCount, failedCount);
     }
+
+
+    /**
+     * Retrieves all available currencies from the repository and maps them
+     * into a response object containing the relevant currency information.
+     *
+     * @return a {@code CurrenciesApiResponse} object containing a list of currencies
+     *         mapped from the repository.
+     */
+    @Transactional(readOnly = true)
+    public CurrenciesApiResponse findAllCurrencies() {
+        return new CurrenciesApiResponse(currencyRepository.findAll().stream()
+                .map(CurrencyInfo::from)
+                .toList());
+    }
+
 
 
 }
