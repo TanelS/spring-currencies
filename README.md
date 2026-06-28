@@ -43,9 +43,10 @@ One honest exception: the `StatelessSession` approach that resolved the rates im
 
 - `GET /rates` endpoint — queries stored rates by base currency, optional target currencies, and optional date (interpreted in `Europe/Tallinn` local time). Returns the latest rate per target currency per day. When no date is supplied, returns rates for all available import dates. When no target currencies are supplied, returns rates for all currencies. A base-currency-against-itself query returns `1.0` without hitting the database. Date interpretation is timezone-aware: the queried date is converted to a UTC range based on the configured local timezone, so users in Estonia get correct results in the 21:00–00:00 UTC window where the UTC date differs from local date.
 
+- `GET /currencies` endpoint (`CurrencyController` → `CurrencyService.findAllCurrencies()`) — returns all stored currencies as a typed list. Uses a static `CurrencyInfo::from` factory method on the DTO record to map entities, keeping mapping logic out of the service layer. Input normalisation (uppercase) is applied before queries so plain SQL `=` / `IN` can be used instead of `ILIKE` — correct and faster.
+
 **Not yet built:**
 - Whether/how to apply the same sanitizer to this app's own inbound REST request bodies, not just outbound CurrencyBeacon responses — undecided.
-- `GET /currencies` endpoint for querying stored currency metadata.
 - Exception handlers (`@ControllerAdvice`) for meaningful error responses — currently returns raw 500s for invalid input.
 
 ## Running locally
