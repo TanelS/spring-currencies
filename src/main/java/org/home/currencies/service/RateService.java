@@ -8,6 +8,7 @@ import org.home.currencies.dto.BaseCurrencyRateDataOutput;
 import org.home.currencies.dto.BaseCurrencyRateDataOutputList;
 import org.home.currencies.entity.Currency;
 import org.home.currencies.entity.Rate;
+import org.home.currencies.exception.CurrencyNotFoundException;
 import org.home.currencies.repository.CurrencyRepository;
 import org.home.currencies.repository.RateQueryResult;
 import org.home.currencies.repository.RateRepository;
@@ -45,16 +46,20 @@ public class RateService {
     }
 
     /**
-     * Creates and imports exchange rates for a given date, base currency, and a map of target currencies with their rates.
-     * If a rate already exists for the given combination of date, base currency, and target currency, it is skipped.
+     * Creates and imports exchange rates for the specified base currency and date.
      *
-     * @param rateDate        The date for which the rates are being created.
-     * @param baseCurrencyStr The currency code of the base currency (e.g., "USD").
-     * @param ratesData       A map where the key is the target currency code (e.g., "EUR") and the value is the exchange rate.
-     * @return A {@code RateImportResult} containing the count of successfully imported rates and skipped rates.
+     * @param rateDate The date for the exchange rates being created.
+     * @param baseCurrencyStr The code of the base currency for the exchange rates.
+     * @param ratesData A map of currency codes to their corresponding exchange rates.
+     *                  The keys represent target currencies, and the values represent the exchange rates.
+     * @return A {@code RateImportResult} object containing the number of successfully imported exchange rates
+     *         and the number of rates that were skipped due to issues such as missing data or duplicates.
+     * @throws CurrencyNotFoundException If the base currency or any provided target currency is not found.
      */
     public RateImportResult createRate(Instant rateDate, String baseCurrencyStr, HashMap<String, BigDecimal> ratesData) {
-        Currency baseCurrencyEntity = currencyRepository.findByCurrencyCode(baseCurrencyStr).orElseThrow();
+        Currency baseCurrencyEntity = currencyRepository
+                .findByCurrencyCode(baseCurrencyStr)
+                .orElseThrow(() -> new CurrencyNotFoundException("Base currency", baseCurrencyStr));
         int importedCount = 0;
         int skippedCount = 0;
 
@@ -70,7 +75,9 @@ public class RateService {
                     continue;
                 }
 
-                Currency currencyEntity = currencyRepository.findByCurrencyCode(currencyCode).orElseThrow();
+                Currency currencyEntity = currencyRepository.
+                        findByCurrencyCode(currencyCode)
+                        .orElseThrow(() -> new CurrencyNotFoundException("Currency", currencyCode));
 
                 if (rateRepository.findByRateDateAndCurrencyAndBaseCurrency(
                         rateDate,
@@ -100,18 +107,21 @@ public class RateService {
 
 
     /**
-     * Retrieves exchange rates for the provided base currency and a list of target currencies
-     * for a specific date or a range of available dates.
+     * Retrieves exchange rate data for the specified base currency and target currencies on a given date.
      *
-     * @param baseCurrency the base currency code for which to retrieve exchange rates.
-     *                     It should be a non-null string and will be normalized to uppercase.
-     * @param rateDate     an optional date for which the exchange rates are required.
-     *                     If null or if the date is not available, rates for all available dates are considered.
-     * @param targetCurrency a list of target currency codes for which exchange rates are to be fetched.
-     *                       If null or empty, rates for all available currencies (excluding the base currency) are returned.
-     * @return a {@code BaseCurrencyRateDataOutputList} object containing the exchange rate data for the requested
-     *         base currency, target currencies, and the applicable date(s). If no rates are found, the list
-     *         may be empty or contain default data.
+     * This method fetches exchange rates from the repository for a base currency and a list of target
+     * currencies. If no target currencies are provided, it retrieves rates for all available currencies.
+     * The results are returned as a list containing the exchange rate data for each date and target currency.
+     *
+     * @param baseCurrency    The base currency code for which exchange rates are to be retrieved.
+     * @param rateDate        The date for which exchange rates are to be retrieved. If rates are not
+     *                        available for this date, the latest available dates will be used.
+     * @param targetCurrency  A list of currency codes representing the target currencies. If null or empty,
+     *                        rates for all available currencies will be retrieved.
+     * @return A {@code BaseCurrencyRateDataOutputList} object containing exchange rate data for the
+     *         specified base currency, the target currencies, and the specified rate date. If some target
+     *         currencies are unavailable in the repository, they will be listed separately in the output.
+     * @throws CurrencyNotFoundException If the specified base currency does not exist in the repository.
      */
     public BaseCurrencyRateDataOutputList getRatesforCurrencies(
             String baseCurrency,
@@ -119,6 +129,11 @@ public class RateService {
             List<String> targetCurrency) {
 
         String baseCurrCleaned = StringCleaner.cleanString(baseCurrency).toUpperCase();
+
+        if (currencyRepository.findByCurrencyCode(baseCurrCleaned).isEmpty()) {
+            throw new CurrencyNotFoundException("Base currency", baseCurrCleaned);
+        }
+
         List<BaseCurrencyRateDataOutput> ratesResultList = new ArrayList<>();
 
 
@@ -134,6 +149,9 @@ public class RateService {
                 .map(String::toUpperCase)
                 .toList();
 
+        Set<String> targetCurrenciesUnverified = new HashSet<>(targetList);
+        targetCurrenciesUnverified.removeAll(codes);  // currency symbols not in the DB
+
         List<LocalDate> rateDatesToLoop = (rateDates.contains(rateDate)) ? List.of(rateDate) : rateDates;
 
         for (LocalDate d : rateDatesToLoop) {
@@ -143,9 +161,8 @@ public class RateService {
             if (queryResult.isEmpty() && (targetCurrency != null) && targetCurrency.contains(baseCurrency)) {
                 rates.put(baseCurrency, new BigDecimal("1.00"));
                 ratesResultList.add(new BaseCurrencyRateDataOutput(baseCurrency, Instant.now(), rates));
-                return new BaseCurrencyRateDataOutputList(ratesResultList);
+                return new BaseCurrencyRateDataOutputList(ratesResultList, null);
             } else if (queryResult.isEmpty()) {
-                ratesResultList.add(new BaseCurrencyRateDataOutput(baseCurrency, Instant.now(), rates));
                 continue;
             }
 
@@ -159,7 +176,9 @@ public class RateService {
             }
             ratesResultList.add(new BaseCurrencyRateDataOutput(base, date, rates));
         }
-        return new BaseCurrencyRateDataOutputList(ratesResultList);
+        return new BaseCurrencyRateDataOutputList(
+                ratesResultList,
+                (!targetCurrenciesUnverified.isEmpty()) ? new ArrayList<>(targetCurrenciesUnverified) : null);
     }
 
 }

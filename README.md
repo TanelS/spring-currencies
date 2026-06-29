@@ -45,9 +45,10 @@ One honest exception: the `StatelessSession` approach that resolved the rates im
 
 - `GET /currencies` endpoint (`CurrencyController` → `CurrencyService.findAllCurrencies()`) — returns all stored currencies as a typed list. Uses a static `CurrencyInfo::from` factory method on the DTO record to map entities, keeping mapping logic out of the service layer. Input normalisation (uppercase) is applied before queries so plain SQL `=` / `IN` can be used instead of `ILIKE` — correct and faster.
 
+- Error handling: `GlobalExceptionHandler` (`@RestControllerAdvice`) catches `CurrencyNotFoundException` and returns a 404 with a JSON error body (`{"error": "..."}`) instead of a raw 500. Invalid base currency is rejected immediately before any DB queries. Invalid target currency codes are not rejected — they are collected into an `unknownCurrencies` field on the response and returned alongside any valid rates, so a partial result is still usable. All currency code inputs are normalised to uppercase before validation and query, so lowercase input is accepted without `ILIKE`.
+
 **Not yet built:**
 - Whether/how to apply the same sanitizer to this app's own inbound REST request bodies, not just outbound CurrencyBeacon responses — undecided.
-- Exception handlers (`@ControllerAdvice`) for meaningful error responses — currently returns raw 500s for invalid input.
 
 ## Running locally
 
