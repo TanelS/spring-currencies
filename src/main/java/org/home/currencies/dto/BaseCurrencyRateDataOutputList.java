@@ -1,22 +1,29 @@
 package org.home.currencies.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import java.util.List;
+import java.util.Optional;
 
 /**
- * Represents a collection of exchange rate data for various base currencies.
+ * Represents a list of exchange rate data for a specific base currency along with unknown currencies.
  *
- * This record encapsulates a list of {@link BaseCurrencyRateDataOutput} instances, where each
- * {@link BaseCurrencyRateDataOutput} contains exchange rate information for a specific base currency,
- * including the base currency code, the date the rates were retrieved, and a mapping of target currencies
- * to their respective exchange rates.
+ * This record encapsulates a collection of {@link BaseCurrencyRateDataOutput} instances
+ * and a list of unknown currency codes. The `rates` field contains detailed exchange rate
+ * information for various base currencies, while the `unknownCurrencies` field captures
+ * currency codes that were not recognized or supported during the retrieval process.
  *
- * Instances of this class are commonly used as the return type for API endpoints or service methods that
- * fetch exchange rate information for multiple base currencies. It provides a structured and immutable
- * representation of exchange rate data.
+ * Instances of this record are typically used in financial applications where exchange
+ * rate data for multiple base currencies is needed, or to provide additional information
+ * about unrecognized currencies during exchange rate queries.
  *
- * @param rates a list of {@link BaseCurrencyRateDataOutput} objects, where each object contains detailed
- *              exchange rate information for a specific base currency
+ * @param rates             a list of {@link BaseCurrencyRateDataOutput} records, each representing
+ *                          exchange rate data for a base currency
+ * @param unknownCurrencies a list of strings representing currency codes that were not recognized
+ *                          during the exchange rate retrieval process
  */
 public record BaseCurrencyRateDataOutputList(
-        List<BaseCurrencyRateDataOutput> rates
+        List<BaseCurrencyRateDataOutput> rates,
+        @JsonInclude(JsonInclude.Include.NON_EMPTY)
+        List<String> unknownCurrencies
 ) {}
