@@ -65,8 +65,11 @@ One honest exception: the `StatelessSession` approach that resolved the rates im
 - Error handling: `GlobalExceptionHandler` (`@RestControllerAdvice`) with three handlers: `CurrencyNotFoundException` → 404; `ConstraintViolationException` → 400 (fired by `@PastOrPresent` on `rateDate`, which rejects future dates — enabled by `@Validated` on the controller class); catch-all `Exception` → 500 with the error message. Invalid base currency is rejected immediately before any DB queries. Invalid target currency codes are not rejected outright — they are collected into an `unknownCurrencies` field on the response and returned alongside any valid rates, so a partial result is still usable. All currency code inputs are normalised to uppercase before validation and query, so lowercase input is accepted without `ILIKE`.
 
 **Next stage (planned):**
-- Authentication and authorization (Spring Security)
-- Middleware patterns
+- **Authentication** — Spring Security + JWT. The import endpoints (`POST /import-currencies`, `POST /import-rates`) are currently open; securing them is the first priority.
+- **Async import** — `POST /import-rates` currently blocks for ~3m40s. Plan: return immediately with a job ID, expose a status polling endpoint, run the import in the background via `@Async`.
+- **Observability** — expose Spring Boot Actuator health and metrics endpoints properly; add Micrometer custom counters for import results (imported/skipped/failed counts as metrics, not just log lines).
+- **Scheduled import** — `@Scheduled` task to pull fresh rates automatically each day, instead of requiring a manual HTTP trigger.
+- **Caching** — Spring Cache (Caffeine or Redis) on `GET /currencies` and repeated `GET /rates` queries to avoid redundant DB round-trips.
 - Whether/how to apply the same sanitizer to this app's own inbound REST request bodies, not just outbound CurrencyBeacon responses — undecided.
 
 ## Running locally
