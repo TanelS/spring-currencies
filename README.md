@@ -27,7 +27,15 @@ The first stage — import pipeline, two query endpoints, error handling, perfor
 
 This README and the Javadoc comments throughout the codebase are AI-generated (Claude). The application code itself — entities, services, repositories, the JSON sanitizer, error handling, everything that actually does the work — was written by me, not by AI. Claude's role was mentoring, not coding: advancing my Spring Boot knowledge, reviewing code I'd already written and pointing out bugs or design issues in it, and answering "why does this happen" questions — but deliberately *not* writing the implementation itself. That was a rule I set on purpose, specifically so I'd actually build real Spring Boot ability through this project rather than end up with working code I didn't understand.
 
-One honest exception: the `StatelessSession` approach that resolved the rates import performance problem (see Design notes) was Claude's idea, not mine. I diagnosed that the bottleneck was in the DB write path and ruled out a number of other theories, but the specific Hibernate mechanism to reach for was Claude's suggestion. The implementation itself I wrote; the insight was Claude's.
+Three honest exceptions, where the underlying insight was Claude's rather than mine — the implementation in all three cases I wrote myself:
+
+- The `StatelessSession` approach that resolved the rates import performance problem (see Design notes). I diagnosed that the bottleneck was in the DB write path and ruled out a number of other theories, but the specific Hibernate mechanism to reach for was Claude's suggestion.
+- The self-invocation `@Transactional` diagnosis (see Design notes). I noticed the symptom — the `rate` table was empty mid-run, meaning nothing was committing until the very end — and used that to suspect the transaction boundary was wrong. Claude identified the actual mechanism (calling a `@Transactional` method on `this` from inside the same class skips Spring's proxy) and the fix (move the method to a separate bean).
+- The `@SpringBootTest` context-cache diagnosis (see Development / Design notes). Claude traced the confusing test failures to Spring caching the failed context build from the empty `CurrenciesApplicationTests` stub and replaying that failure for other test classes with the same configuration.
+
+(The `/latest` duplicate-response non-bug, also in Design notes, was mine: I caught that it was genuine API behavior rather than a `StringCleaner` traversal bug by inspecting the raw response directly.)
+
+Worth being just as honest about the reverse: Claude also got something wrong here. While tracking down the test-properties issue (see Design notes), I asked whether `src/test/resources/application.properties` and `src/main/resources/application.properties` would merge — Claude told me they would. That was incorrect: the test file fully shadows the main one instead. I found this out by testing it myself and had to duplicate the CurrencyBeacon placeholders into the test properties file to fix it.
 
 ## What it does
 
